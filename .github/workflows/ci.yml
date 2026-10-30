@@ -53,27 +53,3 @@ jobs:
       - name: Score the test questions (informational, never fails the build)
         continue-on-error: true
         run: PYTHONPATH=src python scripts/eval.py | tail -5
-
-  alert-on-failure:
-    needs: test
-    if: ${{ always() && needs.test.result == 'failure' }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - name: Post to Discord
-        # Values go in through env vars, never pasted into the shell command, so a branch name can't inject code.
-        env:
-          WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
-          REPO: ${{ github.repository }}
-          REF: ${{ github.ref_name }}
-          ACTOR: ${{ github.actor }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        run: |
-          if [ -z "$WEBHOOK" ]; then
-            echo "DISCORD_WEBHOOK_URL not set (or this is a fork PR); skipping the alert."
-            exit 0
-          fi
-          MSG="❌ CI failed in ${REPO} on \`${REF}\` (by ${ACTOR}): ${RUN_URL}"
-          curl -fsS -H "Content-Type: application/json" \
-            -d "$(jq -n --arg content "$MSG" '{content: $content, allowed_mentions: {parse: []}}')" \
-            "$WEBHOOK"
