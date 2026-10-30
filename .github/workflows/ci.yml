@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Read-only by default. Nothing in this workflow can push, merge, or comment.
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      TOKENIZERS_PARALLELISM: "false"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install dependencies (CPU-only torch keeps the download small)
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install -r requirements.txt
+
+      - name: Cache the embedding model
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: hf-all-minilm-l6-v2
+
+      # The integration tests need the public sheet. If Google is unreachable they skip instead of failing.
+      - name: Download the public Thrive sheet
+        continue-on-error: true
+        run: |
+          mkdir -p data/cache
+          curl -fsSL "https://docs.google.com/spreadsheets/d/1TjkmhejcFU4GbuEUvL8Oyx5m3yqu3-_0w_kFp4yIBVI/export?format=csv" -o data/cache/thrive.csv
+
+      - name: Run tests
+        run: python -m pytest -q
+
+      - name: Score the test questions (informational, never fails the build)
+        continue-on-error: true
+        run: PYTHONPATH=src python scripts/eval.py | tail -5
