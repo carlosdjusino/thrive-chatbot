@@ -1,0 +1,30 @@
+name: PR alert
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review]
+
+permissions: {}
+
+jobs:
+  discord:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Tell Discord a PR needs review
+        # The PR title is untrusted text, so it is never used here. Only the number, author and link are sent.
+        env:
+          WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          REPO: ${{ github.repository }}
+          NUMBER: ${{ github.event.pull_request.number }}
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+          URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          if [ -z "$WEBHOOK" ]; then
+            echo "DISCORD_WEBHOOK_URL not set (or this is a fork PR); skipping."
+            exit 0
+          fi
+          MSG="🔔 PR #${NUMBER} opened in ${REPO} by ${AUTHOR}: ${URL}"
+          curl -fsS -H "Content-Type: application/json" \
+            -d "$(jq -n --arg content "$MSG" '{content: $content, allowed_mentions: {parse: []}}')" \
+            "$WEBHOOK"
