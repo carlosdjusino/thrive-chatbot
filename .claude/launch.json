@@ -1,0 +1,14 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "thrive-chatbot",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "-c",
+        "DYLD_LIBRARY_PATH=/opt/homebrew/opt/expat/lib TOKENIZERS_PARALLELISM=false .venv/bin/streamlit run src/thrive_chatbot/app.py --server.port 8501 --server.headless true --browser.gatherUsageStats false"
+      ],
+      "port": 8501
+    }
+  ]
+}

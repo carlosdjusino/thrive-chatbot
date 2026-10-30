@@ -1,0 +1,11 @@
+pandas
+requests
+python-dotenv
+langchain-core
+langchain-chroma
+langchain-huggingface
+sentence-transformers
+chromadb
+rank-bm25
+streamlit
+pytest
