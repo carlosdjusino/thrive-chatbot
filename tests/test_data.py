@@ -48,17 +48,27 @@ def test_placeholder_and_blank_title_rows_skipped():
     assert [a.title for a in arts] == ["Real"]
 
 
-def test_duplicate_titles_merge_keeping_fuller_row_and_union_categories():
+def test_duplicate_titles_with_different_sources_remain_separate():
     arts = data.parse_csv_text(
         csv(
             "http://x,Same Title,A,Short,,,Healthcare,",
-            ",Same Title,A,A much longer main idea,Longer problems,Sols,Livability,Imp",
+            "http://y,Same Title,A,A much longer main idea,Longer problems,Sols,Livability,Imp",
         )
     )
-    assert len(arts) == 1
-    assert arts[0].main_idea == "A much longer main idea"
-    assert arts[0].link == "http://x"
-    assert set(arts[0].categories) == {"Healthcare", "Livability"}
+    assert len(arts) == 2
+    assert len({a.id for a in arts}) == 2
+    assert {a.link for a in arts} == {"http://x", "http://y"}
+
+
+def test_duplicate_titles_without_links_with_different_content_remain_separate():
+    arts = data.parse_csv_text(
+        csv(
+            ",Same Title,Author A,First article summary,,,Healthcare,",
+            ",Same Title,Author B,Second article summary,,,Livability,",
+        )
+    )
+    assert len(arts) == 2
+    assert len({a.id for a in arts}) == 2
 
 
 def test_new_sheet_layout_with_band_row_and_renamed_columns():

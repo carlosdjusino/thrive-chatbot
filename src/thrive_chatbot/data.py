@@ -75,6 +75,19 @@ def split_categories(value) -> list[str]:
     return seen
 
 
+def _identity_key(article: Article) -> str:
+    """Return a key that distinguishes sources sharing the same title.
+
+    A source link is the best available identity. For rows without a link, use
+    the article content as a fallback so distinct articles with identical
+    titles are not silently merged.
+    """
+    title = re.sub(r"\W+", " ", article.title.lower()).strip()
+    if article.link:
+        return f"{title}|link:{article.link}"
+    return f"{title}|author:{article.authors.lower()}|text:{article.text}"
+
+
 def _find_header_row(df: pd.DataFrame) -> int:
     """Row index (in a header-less frame) that holds the real column names. Skips group-band rows."""
     wanted = {_key(h) for names in config.COLUMN_MAP.values() for h in names if not h.endswith("*")}
@@ -133,13 +146,13 @@ def parse_csv_text(csv_text: str) -> list[Article]:
             implement=cell(row, "implement"),
             categories=split_categories(row.iloc[cols["categories"]]) if "categories" in cols else [],
         )
-        key = re.sub(r"\W+", " ", title.lower()).strip()
+        key = _identity_key(art)
         art.id = hashlib.sha1(key.encode("utf-8")).hexdigest()[:16]
         prev = articles.get(key)
         if prev is None:
             articles[key] = art
         else:
-            # Same title listed twice: keep the fuller row, union the categories and link.
+            # Same source listed twice: keep the fuller row, union the categories and link.
             keep, other = (art, prev) if len(art.text) > len(prev.text) else (prev, art)
             keep.categories = list(dict.fromkeys(keep.categories + other.categories))
             keep.link = keep.link or other.link
